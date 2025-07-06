@@ -1,5 +1,6 @@
 import type { WhereOptions } from '../abstract-dialect/where-sql-builder-types.js';
 import type { FindAttributeOptions, Model, ModelStatic } from '../model.d.ts';
+import type { Sequelize } from '../sequelize.js';
 import { BaseSqlExpression, SQL_IDENTIFIER } from './base-sql-expression.js';
 
 /**
@@ -11,11 +12,13 @@ export class QueryBuilder<M extends Model = Model> extends BaseSqlExpression {
   private readonly _model: ModelStatic<M>;
   private _attributes?: FindAttributeOptions;
   private _where?: WhereOptions;
+  private readonly _sequelize: Sequelize;
   private _isSelect: boolean = false;
 
   constructor(model: ModelStatic<M>) {
     super();
     this._model = model;
+    this._sequelize = model.sequelize;
   }
 
   /**
@@ -95,6 +98,17 @@ export class QueryBuilder<M extends Model = Model> extends BaseSqlExpression {
     const sql = queryGenerator.selectQuery(tableName, options, this._model);
 
     return sql;
+  }
+
+  /**
+   * Executes the raw query
+   *
+   * @returns The result of the query
+   */
+  async execute(): Promise<[unknown[], unknown]> {
+    const sql = this.getQuery();
+
+    return this._sequelize.queryRaw(sql);
   }
 
   /**

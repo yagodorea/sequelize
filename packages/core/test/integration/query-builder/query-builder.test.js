@@ -110,6 +110,8 @@ describe(Support.getTestDialectTeaser('QueryBuilder'), () => {
 
     User.hasMany(Post, { foreignKey: 'userId' });
     Post.belongsTo(User, { foreignKey: 'userId' });
+    await User.sync();
+    await User.truncate();
   });
 
   afterEach(() => {
@@ -287,6 +289,18 @@ describe(Support.getTestDialectTeaser('QueryBuilder'), () => {
         .getQuery();
       const expected = `SELECT * FROM ${q('users')} AS ${q('User')} WHERE ${q('User')}.${q('age')} IS NOT NULL;`;
       expect(query).to.equal(expected);
+    });
+  });
+
+  describe('execute', () => {
+    it('should execute the query', async () => {
+      await User.create({ name: 'John', email: 'john@example.com', active: true });
+      const result = await User.select()
+        .attributes(['name'])
+        .where({ active: true, name: 'John' })
+        .execute();
+      const [row] = result;
+      expect(row).to.deep.equal([{ name: 'John' }]);
     });
   });
 });
