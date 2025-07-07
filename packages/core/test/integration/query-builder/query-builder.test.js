@@ -6,44 +6,9 @@ const expect = chai.expect;
 const Support = require('../../support');
 const { DataTypes, Op } = require('@sequelize/core');
 const { QueryBuilder } = require('../../../lib/expression-builders/query-builder');
+const { expectsql } = require('../../support');
 
 const dialect = Support.getTestDialect();
-
-// Get the appropriate quote character for the current dialect
-function getQuoteChar(dialectName) {
-  switch (dialectName) {
-    case 'postgres':
-    case 'snowflake':
-      return '"';
-    case 'mysql':
-    case 'mariadb':
-    case 'sqlite3':
-      return '`';
-    case 'mssql':
-      return ['[', ']'];
-    default:
-      return '"'; // default to double quotes
-  }
-}
-
-const quoteChar = getQuoteChar(dialect);
-const openQuote = Array.isArray(quoteChar) ? quoteChar[0] : quoteChar;
-const closeQuote = Array.isArray(quoteChar) ? quoteChar[1] : quoteChar;
-
-// Helper function to quote identifiers
-function q(identifier) {
-  return `${openQuote}${identifier}${closeQuote}`;
-}
-
-function b(bool) {
-  switch (dialect) {
-    case 'mssql':
-    case 'sqlite3':
-      return bool === 'true' ? '1' : '0';
-    default:
-      return bool;
-  }
-}
 
 describe(Support.getTestDialectTeaser('QueryBuilder'), () => {
   let sequelize;
@@ -120,33 +85,53 @@ describe(Support.getTestDialectTeaser('QueryBuilder'), () => {
 
   describe('Basic QueryBuilder functionality', () => {
     it('should generate basic SELECT query', () => {
-      const query = User.select().getQuery();
-      const expected = `SELECT * FROM ${q('users')} AS ${q('User')};`;
-      expect(query).to.equal(expected);
+      expectsql(() => User.select().getQuery(), {
+        default: `SELECT * FROM [users] AS [User];`,
+      });
     });
 
     it('should generate SELECT query with specific attributes', () => {
-      const query = User.select().attributes(['name', 'email']).getQuery();
-      const expected = `SELECT ${q('name')}, ${q('email')} FROM ${q('users')} AS ${q('User')};`;
-      expect(query).to.equal(expected);
+      expectsql(() => User.select().attributes(['name', 'email']).getQuery(), {
+        default: `SELECT [name], [email] FROM [users] AS [User];`,
+      });
     });
 
     it('should generate SELECT query with WHERE clause', () => {
-      const query = User.select().where({ active: true }).getQuery();
-      const expected = `SELECT * FROM ${q('users')} AS ${q('User')} WHERE ${q('User')}.${q('active')} = ${b('true')};`;
-      expect(query).to.equal(expected);
+      expectsql(() => User.select().where({ active: true }).getQuery(), {
+        default: `SELECT * FROM [users] AS [User] WHERE [User].[active] = true;`,
+        'mssql sqlite3': `SELECT * FROM [users] AS [User] WHERE [User].[active] = 1;`,
+      });
     });
 
     it('should generate SELECT query with multiple WHERE conditions', () => {
-      const query = User.select().where({ active: true, age: 25 }).getQuery();
-      const expected = `SELECT * FROM ${q('users')} AS ${q('User')} WHERE ${q('User')}.${q('active')} = ${b('true')} AND ${q('User')}.${q('age')} = 25;`;
-      expect(query).to.equal(expected);
+      expectsql(() => User.select().where({ active: true, age: 25 }).getQuery(), {
+        default: `SELECT * FROM [users] AS [User] WHERE [User].[active] = true AND [User].[age] = 25;`,
+        'mssql sqlite3': `SELECT * FROM [users] AS [User] WHERE [User].[active] = 1 AND [User].[age] = 25;`,
+      });
     });
 
     it('should generate complete SELECT query with attributes and WHERE', () => {
-      const query = User.select().attributes(['name', 'email']).where({ active: true }).getQuery();
-      const expected = `SELECT ${q('name')}, ${q('email')} FROM ${q('users')} AS ${q('User')} WHERE ${q('User')}.${q('active')} = ${b('true')};`;
-      expect(query).to.equal(expected);
+      expectsql(
+        () => User.select().attributes(['name', 'email']).where({ active: true }).getQuery(),
+        {
+          default: `SELECT [name], [email] FROM [users] AS [User] WHERE [User].[active] = true;`,
+          'mssql sqlite3': `SELECT [name], [email] FROM [users] AS [User] WHERE [User].[active] = 1;`,
+        },
+      );
+    });
+
+    it('should generate SELECT query with LIMIT', () => {
+      expectsql(() => User.select().limit(10).getQuery(), {
+        default: `SELECT * FROM [users] AS [User] ORDER BY [User].[id] LIMIT 10;`,
+        mssql: `SELECT * FROM [users] AS [User] ORDER BY [User].[id] OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY;`,
+      });
+    });
+
+    it('should generate SELECT query with LIMIT and OFFSET', () => {
+      expectsql(() => User.select().limit(10).offset(5).getQuery(), {
+        default: `SELECT * FROM [users] AS [User] ORDER BY [User].[id] LIMIT 10 OFFSET 5;`,
+        mssql: `SELECT * FROM [users] AS [User] ORDER BY [User].[id] OFFSET 5 ROWS FETCH NEXT 10 ROWS ONLY;`,
+      });
     });
   });
 
@@ -167,65 +152,73 @@ describe(Support.getTestDialectTeaser('QueryBuilder'), () => {
       const builderWithWhere = baseBuilder.where({ active: true });
 
       // Base builder should remain unchanged
-      const baseQuery = baseBuilder.getQuery();
-      const expectedBase = `SELECT * FROM ${q('users')} AS ${q('User')};`;
-      expect(baseQuery).to.equal(expectedBase);
+      expectsql(() => baseBuilder.getQuery(), {
+        default: `SELECT * FROM [users] AS [User];`,
+      });
 
       // Other builders should have their modifications
-      const attributesQuery = builderWithAttributes.getQuery();
-      const expectedAttributes = `SELECT ${q('name')} FROM ${q('users')} AS ${q('User')};`;
-      expect(attributesQuery).to.equal(expectedAttributes);
+      expectsql(() => builderWithAttributes.getQuery(), {
+        default: `SELECT [name] FROM [users] AS [User];`,
+      });
 
-      const whereQuery = builderWithWhere.getQuery();
-      const expectedWhere = `SELECT * FROM ${q('users')} AS ${q('User')} WHERE ${q('User')}.${q('active')} = ${b('true')};`;
-      expect(whereQuery).to.equal(expectedWhere);
+      expectsql(() => builderWithWhere.getQuery(), {
+        default: `SELECT * FROM [users] AS [User] WHERE [User].[active] = true;`,
+        'mssql sqlite3': `SELECT * FROM [users] AS [User] WHERE [User].[active] = 1;`,
+      });
     });
 
     it('should allow building different queries from same base', () => {
       const baseBuilder = User.select().attributes(['name', 'email']);
 
-      const activeUsersQuery = baseBuilder.where({ active: true }).getQuery();
-      const youngUsersQuery = baseBuilder.where({ age: { [Op.lt]: 30 } }).getQuery();
+      expectsql(() => baseBuilder.where({ active: true }).getQuery(), {
+        default: `SELECT [name], [email] FROM [users] AS [User] WHERE [User].[active] = true;`,
+        'mssql sqlite3': `SELECT [name], [email] FROM [users] AS [User] WHERE [User].[active] = 1;`,
+      });
 
-      const expectedActive = `SELECT ${q('name')}, ${q('email')} FROM ${q('users')} AS ${q('User')} WHERE ${q('User')}.${q('active')} = ${b('true')};`;
-      const expectedYoung = `SELECT ${q('name')}, ${q('email')} FROM ${q('users')} AS ${q('User')} WHERE ${q('User')}.${q('age')} < 30;`;
-
-      expect(activeUsersQuery).to.equal(expectedActive);
-      expect(youngUsersQuery).to.equal(expectedYoung);
+      expectsql(() => baseBuilder.where({ age: { [Op.lt]: 30 } }).getQuery(), {
+        default: `SELECT [name], [email] FROM [users] AS [User] WHERE [User].[age] < 30;`,
+      });
     });
   });
 
   if (dialect.startsWith('postgres')) {
     describe('PostgreSQL-specific features', () => {
       it('should handle PostgreSQL operators correctly', () => {
-        const query = User.select()
-          .where({
-            name: { [Op.iLike]: '%john%' },
-            age: { [Op.between]: [18, 65] },
-          })
-          .getQuery();
-        const expected = `SELECT * FROM "users" AS "User" WHERE "User"."name" ILIKE '%john%' AND ("User"."age" BETWEEN 18 AND 65);`;
-        expect(query).to.equal(expected);
+        expectsql(
+          () =>
+            User.select()
+              .where({
+                name: { [Op.iLike]: '%john%' },
+                age: { [Op.between]: [18, 65] },
+              })
+              .getQuery(),
+          {
+            default: `SELECT * FROM [users] AS [User] WHERE [User].[name] ILIKE '%john%' AND ([User].[age] BETWEEN 18 AND 65);`,
+          },
+        );
       });
 
       it('should handle array operations', () => {
-        const query = User.select()
-          .where({
-            name: { [Op.in]: ['John', 'Jane', 'Bob'] },
-          })
-          .getQuery();
-        const expected = `SELECT * FROM "users" AS "User" WHERE "User"."name" IN ('John', 'Jane', 'Bob');`;
-        expect(query).to.equal(expected);
+        expectsql(
+          () =>
+            User.select()
+              .where({
+                name: { [Op.in]: ['John', 'Jane', 'Bob'] },
+              })
+              .getQuery(),
+          {
+            default: `SELECT * FROM [users] AS [User] WHERE [User].[name] IN ('John', 'Jane', 'Bob');`,
+          },
+        );
       });
 
       it('should quote identifiers properly for PostgreSQL', () => {
-        const query = User.select()
-          .attributes(['name', 'email'])
-          .where({ active: true })
-          .getQuery();
-
-        const expected = `SELECT "name", "email" FROM "users" AS "User" WHERE "User"."active" = true;`;
-        expect(query).to.equal(expected);
+        expectsql(
+          () => User.select().attributes(['name', 'email']).where({ active: true }).getQuery(),
+          {
+            default: `SELECT [name], [email] FROM [users] AS [User] WHERE [User].[active] = true;`,
+          },
+        );
       });
     });
   }
@@ -241,9 +234,7 @@ describe(Support.getTestDialectTeaser('QueryBuilder'), () => {
     it('should handle empty attributes array', () => {
       expect(() => {
         User.select().attributes([]).getQuery();
-      }).to.throw(
-        `Attempted a SELECT query for model 'User' as ${q('User')} without selecting any columns`,
-      );
+      }).to.throw(/Attempted a SELECT query for model 'User' as .* without selecting any columns/);
     });
 
     it('should handle null/undefined where conditions gracefully', () => {
@@ -261,34 +252,42 @@ describe(Support.getTestDialectTeaser('QueryBuilder'), () => {
 
   describe('Complex WHERE conditions', () => {
     it('should handle complex nested conditions', () => {
-      const query = User.select()
-        .where({
-          [Op.or]: [
-            { active: true },
-            {
-              [Op.and]: [{ age: { [Op.gte]: 18 } }, { name: { [Op.like]: '%admin%' } }],
-            },
-          ],
-        })
-        .getQuery();
-
-      const likePrefix = dialect === 'mssql' ? 'N' : '';
-      const expected = `SELECT * FROM ${q('users')} AS ${q('User')} WHERE ${q('User')}.${q('active')} = ${b('true')} OR (${q('User')}.${q('age')} >= 18 AND ${q('User')}.${q('name')} LIKE ${likePrefix}'%admin%');`;
-      expect(query).to.equal(expected);
+      expectsql(
+        () =>
+          User.select()
+            .where({
+              [Op.or]: [
+                { active: true },
+                {
+                  [Op.and]: [{ age: { [Op.gte]: 18 } }, { name: { [Op.like]: '%admin%' } }],
+                },
+              ],
+            })
+            .getQuery(),
+        {
+          default: `SELECT * FROM [users] AS [User] WHERE [User].[active] = true OR ([User].[age] >= 18 AND [User].[name] LIKE '%admin%');`,
+          sqlite3: `SELECT * FROM \`users\` AS \`User\` WHERE \`User\`.\`active\` = 1 OR (\`User\`.\`age\` >= 18 AND \`User\`.\`name\` LIKE '%admin%');`,
+          mssql: `SELECT * FROM [users] AS [User] WHERE [User].[active] = 1 OR ([User].[age] >= 18 AND [User].[name] LIKE N'%admin%');`,
+        },
+      );
     });
 
     it('should handle IS NULL conditions', () => {
-      const query = User.select().where({ age: null }).getQuery();
-      const expected = `SELECT * FROM ${q('users')} AS ${q('User')} WHERE ${q('User')}.${q('age')} IS NULL;`;
-      expect(query).to.equal(expected);
+      expectsql(() => User.select().where({ age: null }).getQuery(), {
+        default: `SELECT * FROM [users] AS [User] WHERE [User].[age] IS NULL;`,
+      });
     });
 
     it('should handle NOT NULL conditions', () => {
-      const query = User.select()
-        .where({ age: { [Op.ne]: null } })
-        .getQuery();
-      const expected = `SELECT * FROM ${q('users')} AS ${q('User')} WHERE ${q('User')}.${q('age')} IS NOT NULL;`;
-      expect(query).to.equal(expected);
+      expectsql(
+        () =>
+          User.select()
+            .where({ age: { [Op.ne]: null } })
+            .getQuery(),
+        {
+          default: `SELECT * FROM [users] AS [User] WHERE [User].[age] IS NOT NULL;`,
+        },
+      );
     });
   });
 
