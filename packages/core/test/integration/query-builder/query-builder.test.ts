@@ -1,8 +1,19 @@
-import type { InferAttributes, InferCreationAttributes, ModelStatic, Sequelize, Model } from '@sequelize/core';
+import type {
+  InferAttributes,
+  InferCreationAttributes,
+  Model,
+  ModelStatic,
+  Sequelize,
+} from '@sequelize/core';
 import { DataTypes, Op, sql, where } from '@sequelize/core';
 import { expect } from 'chai';
 import { QueryBuilder } from '../../../lib/expression-builders/query-builder';
-import { expectsql, getTestDialect, getTestDialectTeaser, createSequelizeInstance } from '../../support';
+import {
+  createSequelizeInstance,
+  expectsql,
+  getTestDialect,
+  getTestDialectTeaser,
+} from '../../support';
 
 interface TUser extends Model<InferAttributes<TUser>, InferCreationAttributes<TUser>> {
   id: number;
@@ -75,22 +86,37 @@ describe(getTestDialectTeaser('QueryBuilder'), () => {
       });
     });
 
-        // Won't work with minified aliases
+    // Won't work with minified aliases
     if (!process.env.SEQ_PG_MINIFY_ALIASES) {
       it('should generate SELECT query with aliased attributes', () => {
-        expectsql(User.select().attributes([['name', 'username'], 'email']).getQuery(), {
-          default: 'SELECT [name] AS [username], [email] FROM [users] AS [User];',
-        });
+        expectsql(
+          User.select()
+            .attributes([['name', 'username'], 'email'])
+            .getQuery(),
+          {
+            default: 'SELECT [name] AS [username], [email] FROM [users] AS [User];',
+          },
+        );
       });
 
       it('should generate SELECT query with literal attributes', () => {
-        expectsql(User.select().attributes([sql.literal('"User"."email" AS "personalEmail"')]).getQuery(), {
-          default: 'SELECT "User"."email" AS "personalEmail" FROM [users] AS [User];', // literal
-        });
+        expectsql(
+          User.select()
+            .attributes([sql.literal('"User"."email" AS "personalEmail"')])
+            .getQuery(),
+          {
+            default: 'SELECT "User"."email" AS "personalEmail" FROM [users] AS [User];', // literal
+          },
+        );
 
-        expectsql(User.select().attributes([[sql.literal('"User"."email"'), 'personalEmail']]).getQuery(), {
-          default: 'SELECT "User"."email" AS [personalEmail] FROM [users] AS [User];',
-        });
+        expectsql(
+          User.select()
+            .attributes([[sql.literal('"User"."email"'), 'personalEmail']])
+            .getQuery(),
+          {
+            default: 'SELECT "User"."email" AS [personalEmail] FROM [users] AS [User];',
+          },
+        );
       });
     }
 
@@ -104,35 +130,38 @@ describe(getTestDialectTeaser('QueryBuilder'), () => {
 
     it('should generate SELECT query with multiple WHERE conditions', () => {
       expectsql(User.select().where({ active: true, age: 25 }).getQuery(), {
-        default: 'SELECT [User].* FROM [users] AS [User] WHERE [User].[active] = true AND [User].[age] = 25;',
-        sqlite3: 'SELECT `User`.* FROM `users` AS `User` WHERE `User`.`active` = 1 AND `User`.`age` = 25;',
-        mssql: 'SELECT [User].* FROM [users] AS [User] WHERE [User].[active] = 1 AND [User].[age] = 25;',
+        default:
+          'SELECT [User].* FROM [users] AS [User] WHERE [User].[active] = true AND [User].[age] = 25;',
+        sqlite3:
+          'SELECT `User`.* FROM `users` AS `User` WHERE `User`.`active` = 1 AND `User`.`age` = 25;',
+        mssql:
+          'SELECT [User].* FROM [users] AS [User] WHERE [User].[active] = 1 AND [User].[age] = 25;',
       });
     });
 
     it('should generate complete SELECT query with attributes and WHERE', () => {
-      expectsql(
-        User.select().attributes(['name', 'email']).where({ active: true }).getQuery(),
-        {
-          default: 'SELECT [name], [email] FROM [users] AS [User] WHERE [User].[active] = true;',
-          sqlite3: 'SELECT `name`, `email` FROM `users` AS `User` WHERE `User`.`active` = 1;',
-          mssql: 'SELECT [name], [email] FROM [users] AS [User] WHERE [User].[active] = 1;',
-        },
-      );
+      expectsql(User.select().attributes(['name', 'email']).where({ active: true }).getQuery(), {
+        default: 'SELECT [name], [email] FROM [users] AS [User] WHERE [User].[active] = true;',
+        sqlite3: 'SELECT `name`, `email` FROM `users` AS `User` WHERE `User`.`active` = 1;',
+        mssql: 'SELECT [name], [email] FROM [users] AS [User] WHERE [User].[active] = 1;',
+      });
     });
 
     it('should generate SELECT query with LIMIT', () => {
       expectsql(User.select().limit(10).getQuery(), {
         default: 'SELECT [User].* FROM [users] AS [User] ORDER BY [User].[id] LIMIT 10;',
-        mssql: 'SELECT [User].* FROM [users] AS [User] ORDER BY [User].[id] OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY;',
+        mssql:
+          'SELECT [User].* FROM [users] AS [User] ORDER BY [User].[id] OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY;',
       });
     });
 
     it('should generate SELECT query with LIMIT and OFFSET', () => {
       expectsql(User.select().limit(10).offset(5).getQuery(), {
         default: 'SELECT [User].* FROM [users] AS [User] ORDER BY [User].[id] LIMIT 10 OFFSET 5;',
-        'mysql mariadb sqlite3': 'SELECT [User].* FROM `users` AS `User` ORDER BY `User`.`id` LIMIT 10 OFFSET 5;',
-        mssql: 'SELECT [User].* FROM [users] AS [User] ORDER BY [User].[id] OFFSET 5 ROWS FETCH NEXT 10 ROWS ONLY;',
+        'mysql mariadb sqlite3':
+          'SELECT [User].* FROM `users` AS `User` ORDER BY `User`.`id` LIMIT 10 OFFSET 5;',
+        mssql:
+          'SELECT [User].* FROM [users] AS [User] ORDER BY [User].[id] OFFSET 5 ROWS FETCH NEXT 10 ROWS ONLY;',
       });
     });
 
@@ -141,9 +170,14 @@ describe(getTestDialectTeaser('QueryBuilder'), () => {
         default: 'SELECT [User].* FROM [users] AS [User] ORDER BY [User].[name];',
       });
 
-      expectsql(User.select().orderBy([['age', 'DESC']]).getQuery(), {
-        default: 'SELECT [User].* FROM [users] AS [User] ORDER BY [User].[age] DESC;',
-      });
+      expectsql(
+        User.select()
+          .orderBy([['age', 'DESC']])
+          .getQuery(),
+        {
+          default: 'SELECT [User].* FROM [users] AS [User] ORDER BY [User].[age] DESC;',
+        },
+      );
     });
 
     // TODO: Figure out how to implement this
@@ -160,35 +194,44 @@ describe(getTestDialectTeaser('QueryBuilder'), () => {
     // Won't work with minified aliases
     if (!process.env.SEQ_PG_MINIFY_ALIASES) {
       it('should generate SELECT query with GROUP BY', () => {
-        expectsql(User
-          .select()
-          .attributes(['name', [sql.literal('MAX("age")'), 'maxAge']])
-          .groupBy('name')
-          .orderBy([[sql.literal('MAX("age")'), 'DESC']])
-          .getQuery(), {
-          default: 'SELECT [name], MAX("age") AS [maxAge] FROM [users] AS [User] GROUP BY [name] ORDER BY MAX("age") DESC;',
-        });
+        expectsql(
+          User.select()
+            .attributes(['name', [sql.literal('MAX("age")'), 'maxAge']])
+            .groupBy('name')
+            .orderBy([[sql.literal('MAX("age")'), 'DESC']])
+            .getQuery(),
+          {
+            default:
+              'SELECT [name], MAX("age") AS [maxAge] FROM [users] AS [User] GROUP BY [name] ORDER BY MAX("age") DESC;',
+          },
+        );
       });
 
       it('should generate SELECT query with GROUP BY and HAVING', () => {
-        expectsql(User
-          .select()
-          .attributes(['name', [sql.literal('MAX("age")'), 'maxAge']])
-          .groupBy('name')
-          .having(sql.literal('MAX("age") > 30'))
-          .getQuery(), {
-          default: 'SELECT [name], MAX("age") AS [maxAge] FROM [users] AS [User] GROUP BY [name] HAVING MAX("age") > 30;',
-        });
+        expectsql(
+          User.select()
+            .attributes(['name', [sql.literal('MAX("age")'), 'maxAge']])
+            .groupBy('name')
+            .having(sql.literal('MAX("age") > 30'))
+            .getQuery(),
+          {
+            default:
+              'SELECT [name], MAX("age") AS [maxAge] FROM [users] AS [User] GROUP BY [name] HAVING MAX("age") > 30;',
+          },
+        );
 
-        expectsql(User
-          .select()
-          .attributes(['name', [sql.literal('MAX("age")'), 'maxAge']])
-          .groupBy('name')
-          .having(sql.literal('MAX("age") > 30'))
-          .andHaving(sql.literal('COUNT(*) > 1'))
-          .getQuery(), {
-          default: 'SELECT [name], MAX("age") AS [maxAge] FROM [users] AS [User] GROUP BY [name] HAVING MAX("age") > 30 AND COUNT(*) > 1;',
-        });
+        expectsql(
+          User.select()
+            .attributes(['name', [sql.literal('MAX("age")'), 'maxAge']])
+            .groupBy('name')
+            .having(sql.literal('MAX("age") > 30'))
+            .andHaving(sql.literal('COUNT(*) > 1'))
+            .getQuery(),
+          {
+            default:
+              'SELECT [name], MAX("age") AS [maxAge] FROM [users] AS [User] GROUP BY [name] HAVING MAX("age") > 30 AND COUNT(*) > 1;',
+          },
+        );
       });
     }
   });
@@ -252,7 +295,8 @@ describe(getTestDialectTeaser('QueryBuilder'), () => {
             })
             .getQuery(),
           {
-            default: 'SELECT [User].* FROM [users] AS [User] WHERE [User].[name] ILIKE \'%john%\' AND ([User].[age] BETWEEN 18 AND 65);',
+            default:
+              "SELECT [User].* FROM [users] AS [User] WHERE [User].[name] ILIKE '%john%' AND ([User].[age] BETWEEN 18 AND 65);",
           },
         );
       });
@@ -265,18 +309,16 @@ describe(getTestDialectTeaser('QueryBuilder'), () => {
             })
             .getQuery(),
           {
-            default: 'SELECT [User].* FROM [users] AS [User] WHERE [User].[name] IN (\'John\', \'Jane\', \'Bob\');',
+            default:
+              "SELECT [User].* FROM [users] AS [User] WHERE [User].[name] IN ('John', 'Jane', 'Bob');",
           },
         );
       });
 
       it('should quote identifiers properly for PostgreSQL', () => {
-        expectsql(
-          User.select().attributes(['name', 'email']).where({ active: true }).getQuery(),
-          {
-            default: 'SELECT [name], [email] FROM [users] AS [User] WHERE [User].[active] = true;',
-          },
-        );
+        expectsql(User.select().attributes(['name', 'email']).where({ active: true }).getQuery(), {
+          default: 'SELECT [name], [email] FROM [users] AS [User] WHERE [User].[active] = true;',
+        });
       });
     });
   }
@@ -310,9 +352,12 @@ describe(getTestDialectTeaser('QueryBuilder'), () => {
           })
           .getQuery(),
         {
-          default: 'SELECT [User].* FROM [users] AS [User] WHERE [User].[active] = true OR ([User].[age] >= 18 AND [User].[name] LIKE \'%admin%\');',
-          sqlite3: 'SELECT `User`.* FROM `users` AS `User` WHERE `User`.`active` = 1 OR (`User`.`age` >= 18 AND `User`.`name` LIKE \'%admin%\');',
-          mssql: 'SELECT [User].* FROM [users] AS [User] WHERE [User].[active] = 1 OR ([User].[age] >= 18 AND [User].[name] LIKE N\'%admin%\');',
+          default:
+            "SELECT [User].* FROM [users] AS [User] WHERE [User].[active] = true OR ([User].[age] >= 18 AND [User].[name] LIKE '%admin%');",
+          sqlite3:
+            "SELECT `User`.* FROM `users` AS `User` WHERE `User`.`active` = 1 OR (`User`.`age` >= 18 AND `User`.`name` LIKE '%admin%');",
+          mssql:
+            "SELECT [User].* FROM [users] AS [User] WHERE [User].[active] = 1 OR ([User].[age] >= 18 AND [User].[name] LIKE N'%admin%');",
         },
       );
     });
@@ -352,12 +397,16 @@ describe(getTestDialectTeaser('QueryBuilder'), () => {
 
     if (getTestDialect() === 'postgres' && !process.env.SEQ_PG_MINIFY_ALIASES) {
       it('should handle complex conditions with multiple joins', async () => {
-        const Comments = sequelize.define('Comments', {
-          id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-          userId: DataTypes.INTEGER,
-          content: DataTypes.STRING,
-          likes: DataTypes.INTEGER,
-        }, { tableName: 'comments' });
+        const Comments = sequelize.define(
+          'Comments',
+          {
+            id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+            userId: DataTypes.INTEGER,
+            content: DataTypes.STRING,
+            likes: DataTypes.INTEGER,
+          },
+          { tableName: 'comments' },
+        );
         await Comments.sync({ force: true });
         await Post.sync({ force: true });
         await User.sync({ force: true });
@@ -399,7 +448,10 @@ describe(getTestDialectTeaser('QueryBuilder'), () => {
           .groupBy([sql.col('User.id'), sql.col('p.id')])
           .having(sql.literal('SUM("c"."likes") > 10'))
           .andHaving(sql.literal('SUM("c"."likes") < 300'))
-          .orderBy([['name', 'DESC'], [sql.col('p.title'), 'ASC']]);
+          .orderBy([
+            ['name', 'DESC'],
+            [sql.col('p.title'), 'ASC'],
+          ]);
         const query = qb.getQuery({ multiline: true });
         expectsql(query, {
           default: [
@@ -440,7 +492,6 @@ describe(getTestDialectTeaser('QueryBuilder'), () => {
   });
 
   describe('includes (custom joins)', () => {
-
     if (!process.env.SEQ_PG_MINIFY_ALIASES) {
       it('should generate LEFT JOIN with custom condition', () => {
         expectsql(
@@ -452,7 +503,8 @@ describe(getTestDialectTeaser('QueryBuilder'), () => {
             })
             .getQuery(),
           {
-            default: 'SELECT [User].*, [Posts].[id] AS [Posts.id], [Posts].[title] AS [Posts.title], [Posts].[content] AS [Posts.content], [Posts].[userId] AS [Posts.userId], [Posts].[createdAt] AS [Posts.createdAt], [Posts].[updatedAt] AS [Posts.updatedAt] FROM [users] AS [User] LEFT OUTER JOIN [posts] AS [Posts] ON [User].[id] = [Posts].[userId];',
+            default:
+              'SELECT [User].*, [Posts].[id] AS [Posts.id], [Posts].[title] AS [Posts.title], [Posts].[content] AS [Posts.content], [Posts].[userId] AS [Posts.userId], [Posts].[createdAt] AS [Posts.createdAt], [Posts].[updatedAt] AS [Posts.updatedAt] FROM [users] AS [User] LEFT OUTER JOIN [posts] AS [Posts] ON [User].[id] = [Posts].[userId];',
           },
         );
       });
@@ -468,7 +520,8 @@ describe(getTestDialectTeaser('QueryBuilder'), () => {
             })
             .getQuery(),
           {
-            default: 'SELECT [User].*, [Posts].[id] AS [Posts.id], [Posts].[title] AS [Posts.title], [Posts].[content] AS [Posts.content], [Posts].[userId] AS [Posts.userId], [Posts].[createdAt] AS [Posts.createdAt], [Posts].[updatedAt] AS [Posts.updatedAt] FROM [users] AS [User] INNER JOIN [posts] AS [Posts] ON [User].[id] = [Posts].[userId];',
+            default:
+              'SELECT [User].*, [Posts].[id] AS [Posts.id], [Posts].[title] AS [Posts.title], [Posts].[content] AS [Posts.content], [Posts].[userId] AS [Posts.userId], [Posts].[createdAt] AS [Posts.createdAt], [Posts].[updatedAt] AS [Posts.updatedAt] FROM [users] AS [User] INNER JOIN [posts] AS [Posts] ON [User].[id] = [Posts].[userId];',
           },
         );
       });
@@ -484,7 +537,8 @@ describe(getTestDialectTeaser('QueryBuilder'), () => {
             })
             .getQuery(),
           {
-            default: 'SELECT [User].*, [Posts].[id] AS [Posts.id], [Posts].[title] AS [Posts.title], [Posts].[content] AS [Posts.content], [Posts].[userId] AS [Posts.userId], [Posts].[createdAt] AS [Posts.createdAt], [Posts].[updatedAt] AS [Posts.updatedAt] FROM [users] AS [User] INNER JOIN [posts] AS [Posts] ON [User].[id] = [Posts].[userId];',
+            default:
+              'SELECT [User].*, [Posts].[id] AS [Posts.id], [Posts].[title] AS [Posts.title], [Posts].[content] AS [Posts.content], [Posts].[userId] AS [Posts.userId], [Posts].[createdAt] AS [Posts.createdAt], [Posts].[updatedAt] AS [Posts.updatedAt] FROM [users] AS [User] INNER JOIN [posts] AS [Posts] ON [User].[id] = [Posts].[userId];',
           },
         );
       });
@@ -502,8 +556,10 @@ describe(getTestDialectTeaser('QueryBuilder'), () => {
             })
             .getQuery(),
           {
-            default: 'SELECT [User].*, [Posts].[id] AS [Posts.id], [Posts].[title] AS [Posts.title], [Posts].[content] AS [Posts.content], [Posts].[userId] AS [Posts.userId], [Posts].[createdAt] AS [Posts.createdAt], [Posts].[updatedAt] AS [Posts.updatedAt] FROM [users] AS [User] LEFT OUTER JOIN [posts] AS [Posts] ON [User].[id] = [Posts].[userId] AND [Posts].[title] = \'Hello World\';',
-            mssql: 'SELECT [User].*, [Posts].[id] AS [Posts.id], [Posts].[title] AS [Posts.title], [Posts].[content] AS [Posts.content], [Posts].[userId] AS [Posts.userId], [Posts].[createdAt] AS [Posts.createdAt], [Posts].[updatedAt] AS [Posts.updatedAt] FROM [users] AS [User] LEFT OUTER JOIN [posts] AS [Posts] ON [User].[id] = [Posts].[userId] AND [Posts].[title] = N\'Hello World\';',
+            default:
+              "SELECT [User].*, [Posts].[id] AS [Posts.id], [Posts].[title] AS [Posts.title], [Posts].[content] AS [Posts.content], [Posts].[userId] AS [Posts.userId], [Posts].[createdAt] AS [Posts.createdAt], [Posts].[updatedAt] AS [Posts.updatedAt] FROM [users] AS [User] LEFT OUTER JOIN [posts] AS [Posts] ON [User].[id] = [Posts].[userId] AND [Posts].[title] = 'Hello World';",
+            mssql:
+              "SELECT [User].*, [Posts].[id] AS [Posts.id], [Posts].[title] AS [Posts.title], [Posts].[content] AS [Posts.content], [Posts].[userId] AS [Posts.userId], [Posts].[createdAt] AS [Posts.createdAt], [Posts].[updatedAt] AS [Posts.updatedAt] FROM [users] AS [User] LEFT OUTER JOIN [posts] AS [Posts] ON [User].[id] = [Posts].[userId] AND [Posts].[title] = N'Hello World';",
           },
         );
       });
@@ -519,7 +575,8 @@ describe(getTestDialectTeaser('QueryBuilder'), () => {
             })
             .getQuery(),
           {
-            default: 'SELECT [User].*, [Posts].[title] AS [Posts.title] FROM [users] AS [User] LEFT OUTER JOIN [posts] AS [Posts] ON [User].[id] = [Posts].[userId];',
+            default:
+              'SELECT [User].*, [Posts].[title] AS [Posts.title] FROM [users] AS [User] LEFT OUTER JOIN [posts] AS [Posts] ON [User].[id] = [Posts].[userId];',
           },
         );
       });

@@ -1,6 +1,13 @@
 import type { SelectOptions } from '../abstract-dialect/query-generator.js';
 import type { WhereOptions } from '../abstract-dialect/where-sql-builder-types.js';
-import type { FindAttributeOptions, GroupOption, Model, ModelStatic, Order, OrderItem } from '../model.d.ts';
+import type {
+  FindAttributeOptions,
+  GroupOption,
+  Model,
+  ModelStatic,
+  Order,
+  OrderItem,
+} from '../model.d.ts';
 import { Op } from '../operators.js';
 import type { Sequelize } from '../sequelize.js';
 import { BaseSqlExpression, SQL_IDENTIFIER } from './base-sql-expression.js';
@@ -15,7 +22,7 @@ type QueryBuilderIncludeOptions<M extends Model> = {
   attributes?: FindAttributeOptions;
   where?: WhereOptions;
   required?: boolean;
-  joinType?: "LEFT" | "INNER" | "RIGHT";
+  joinType?: 'LEFT' | 'INNER' | 'RIGHT';
 };
 
 type QueryBuilderGetQueryOptions = {
@@ -28,7 +35,7 @@ type IncludeOption = {
   required: boolean;
   right: boolean;
   on: Record<string, Col> | Where;
-  where: WhereOptions,
+  where: WhereOptions;
   attributes: FindAttributeOptions | string[];
   _isCustomJoin: boolean;
 };
@@ -73,7 +80,7 @@ export class QueryBuilder<M extends Model = Model> extends BaseSqlExpression {
     newBuilder._order = this._order;
     newBuilder._limit = this._limit;
     newBuilder._offset = this._offset;
-    newBuilder._include = this._include.map((include) => ({ ...include }));
+    newBuilder._include = this._include.map(include => ({ ...include }));
 
     return newBuilder;
   }
@@ -118,8 +125,8 @@ export class QueryBuilder<M extends Model = Model> extends BaseSqlExpression {
 
   /**
    * Sets the GROUP BY clause for the query
-   * 
-   * @param group 
+   *
+   * @param group
    * @returns The query builder instance for chaining
    */
   groupBy(group: GroupOption): QueryBuilder<M> {
@@ -131,7 +138,7 @@ export class QueryBuilder<M extends Model = Model> extends BaseSqlExpression {
 
   /**
    * Sets the HAVING clause for the query (supports only Literal condition)
-   * 
+   *
    * @param having
    * @returns The query builder instance for chaining
    */
@@ -144,20 +151,20 @@ export class QueryBuilder<M extends Model = Model> extends BaseSqlExpression {
 
   /**
    * Allows chaining of additional HAVING conditions
-   * 
+   *
    * @param having
    * @returns The query builder instance for chaining
    */
   andHaving(having: Literal): QueryBuilder<M> {
     const newBuilder = this.clone();
-    newBuilder._having = [...newBuilder._having || [], having];
+    newBuilder._having = [...(newBuilder._having || []), having];
 
     return newBuilder;
   }
 
   /**
    * Set the ORDER BY clause for the query
-   * 
+   *
    * @param order - The order to apply to the query
    * @returns The query builder instance for chaining
    */
@@ -277,9 +284,12 @@ export class QueryBuilder<M extends Model = Model> extends BaseSqlExpression {
       limit: this._limit,
       offset: this._offset,
       group: this._group!,
-      having: this._having && this._having.length > 0 ? {
-        [Op.and]: this._having || [],
-      } : undefined,
+      having:
+        this._having && this._having.length > 0
+          ? {
+              [Op.and]: this._having || [],
+            }
+          : undefined,
       raw: true,
       plain: false,
       model: this._model,
