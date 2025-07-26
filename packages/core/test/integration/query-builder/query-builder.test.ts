@@ -70,7 +70,7 @@ describe(getTestDialectTeaser('QueryBuilder'), () => {
   });
 
   afterEach(async () => {
-    return await sequelize?.close();
+    return sequelize?.close();
   });
 
   describe('Basic QueryBuilder functionality', () => {
