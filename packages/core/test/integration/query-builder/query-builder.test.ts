@@ -152,7 +152,7 @@ describe(getTestDialectTeaser('QueryBuilder'), () => {
         default: 'SELECT [User].* FROM [users] AS [User] ORDER BY [User].[id] LIMIT 10;',
         mssql:
           'SELECT [User].* FROM [users] AS [User] ORDER BY [User].[id] OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY;',
-        db2: 'SELECT [User].* FROM [users] AS [User] ORDER BY [User].[id] FETCH NEXT 10 ROWS ONLY;',
+        db2: 'SELECT "User".* FROM "users" AS "User" ORDER BY "User"."id" FETCH NEXT 10 ROWS ONLY;',
       });
     });
 
