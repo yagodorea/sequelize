@@ -150,8 +150,9 @@ describe(getTestDialectTeaser('QueryBuilder'), () => {
     it('should generate SELECT query with LIMIT', () => {
       expectsql(User.select().limit(10).getQuery(), {
         default: 'SELECT [User].* FROM [users] AS [User] ORDER BY [User].[id] LIMIT 10;',
-        'mssql db2':
+        mssql:
           'SELECT [User].* FROM [users] AS [User] ORDER BY [User].[id] OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY;',
+        db2: 'SELECT [User].* FROM [users] AS [User] ORDER BY [User].[id] FETCH NEXT 10 ROWS ONLY;',
       });
     });
 
